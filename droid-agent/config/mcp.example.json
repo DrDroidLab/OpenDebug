@@ -1,0 +1,200 @@
+{
+  "tools": [
+    {
+      "name": "run_shell",
+      "description": "Run a shell command on the host machine. Use for kubectl, aws, az, gcloud, gh, docker, terraform, helm, grep, curl, ps, netstat, df, etc.",
+      "args": { "command": "string — the full shell command to run" },
+      "executor": "shell",
+      "timeout": 60
+    },
+    {
+      "name": "fetch_url",
+      "description": "HTTP GET a URL. Use for health endpoints, metrics APIs, status pages.",
+      "args": { "url": "string — the full URL", "headers": "object — optional" },
+      "executor": "http_get",
+      "timeout": 10
+    },
+    {
+      "name": "read_file",
+      "description": "Read a file from the host filesystem.",
+      "args": { "path": "string — absolute path on the host" },
+      "executor": "read_file"
+    },
+    {
+      "name": "write_memory",
+      "description": "Save a note or summary to agent memory for future reference.",
+      "args": { "path": "string — relative path inside memory/", "content": "string — markdown content" },
+      "executor": "memory_write"
+    }
+  ],
+  "allowed_dangerous": [],
+
+  "mcpServers": {
+    "_readme": "MCP (Model Context Protocol) servers give the agent access to external services. Set enabled:true and fill in your credentials. The agent auto-discovers tools from each server on startup.",
+
+    "github": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "slack": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "xoxb-xxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx",
+        "SLACK_TEAM_ID": "T00000000"
+      }
+    },
+
+    "postgres": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:password@host:5432/database"]
+    },
+
+    "filesystem": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"]
+    },
+
+    "fetch": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+
+    "brave-search": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "BSA_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "sentry": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@sentry/mcp-server"],
+      "env": {
+        "SENTRY_AUTH_TOKEN": "sntrys_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "datadog": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-datadog"],
+      "env": {
+        "DATADOG_API_KEY": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "DATADOG_APP_KEY": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "grafana": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@grafana/mcp-server"],
+      "env": {
+        "GRAFANA_URL": "https://your-instance.grafana.net",
+        "GRAFANA_API_KEY": "glsa_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "linear": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "mcp-linear"],
+      "env": {
+        "LINEAR_API_KEY": "lin_api_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "pagerduty": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@pagerduty/mcp-server"],
+      "env": {
+        "PAGERDUTY_API_KEY": "u+xxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "cloudflare": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server-cloudflare"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "supabase": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase", "--read-only", "--project-ref=your-project-ref"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "render": {
+      "enabled": false,
+      "type": "http",
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer rnd_xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "vercel": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@vercel/mcp-server"],
+      "env": {
+        "VERCEL_TOKEN": "xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "posthog": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "posthog-mcp-server"],
+      "env": {
+        "POSTHOG_API_KEY": "phx_xxxxxxxxxxxxxxxxxxxx",
+        "POSTHOG_PROJECT_ID": "12345"
+      }
+    },
+
+    "newrelic": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "newrelic-mcp-server"],
+      "env": {
+        "NEW_RELIC_API_KEY": "NRAK-xxxxxxxxxxxxxxxxxxxx",
+        "NEW_RELIC_ACCOUNT_ID": "12345"
+      }
+    },
+
+    "elasticsearch": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "mcp-server-elasticsearch"],
+      "env": {
+        "ELASTICSEARCH_URL": "https://your-cluster.es.region.cloud.es.io:9243",
+        "ELASTICSEARCH_API_KEY": "xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+
+    "kubernetes": {
+      "enabled": false,
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-kubernetes"]
+    }
+  }
+}

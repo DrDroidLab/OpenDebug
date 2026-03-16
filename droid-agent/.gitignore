@@ -1,0 +1,23 @@
+# Environment (contains API keys)
+.env
+
+# MCP config (contains service credentials — use mcp.example.json as template)
+config/mcp.json
+
+# Node modules
+node_modules/
+
+# Memory — user-generated content
+memory/infra/*
+memory/incidents/*
+memory/learned/*
+!memory/infra/.gitkeep
+!memory/incidents/.gitkeep
+!memory/learned/.gitkeep
+
+# Keep pre-seeded files
+!memory/context.md
+!memory/README.md
+
+# Docker
+*.log

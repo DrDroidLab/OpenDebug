@@ -1,0 +1,81 @@
+services:
+  droid-agent:
+    build: .
+    container_name: droid-agent
+    ports:
+      - "7433:7433"
+    volumes:
+      - ./skills:/app/skills
+      - ./memory:/app/memory
+      - ./config:/app/config
+      # Host Docker socket — lets docker commands work
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Host credential & config mounts (read-only)
+      # Comment out any that don't exist on your machine
+      - ~/.kube:/root/.kube:ro
+      - ~/.aws:/root/.aws:ro
+      - ~/.azure:/root/.azure:ro
+      - ~/.config/gcloud:/root/.config/gcloud
+      - ~/.config/gh:/root/.config/gh:ro
+      - ~/.docker:/root/.docker:ro
+      - ~/.ssh:/root/.ssh:ro
+    env_file:
+      - .env
+    environment:
+      # Provider selection
+      - AI_PROVIDER=${AI_PROVIDER:-azure-openai}
+      # Direct OpenAI
+      - OPENAI_API_KEY
+      - OPENAI_MODEL
+      # Anthropic Claude
+      - ANTHROPIC_API_KEY
+      - CLAUDE_MODEL
+      # Azure AI Foundry — OpenAI
+      - AZURE_OPENAI_ENDPOINT
+      - AZURE_OPENAI_API_KEY
+      - AZURE_OPENAI_DEPLOYMENT
+      - AZURE_API_VERSION
+      # Azure AI Foundry — Kimi
+      - AZURE_KIMI_ENDPOINT
+      - AZURE_KIMI_API_KEY
+      - AZURE_KIMI_DEPLOYMENT
+      # General
+      - AGENT_NAME=${AGENT_NAME:-Droid Agent}
+      - PORT=${PORT:-7433}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://droidagent:droidagent@postgres:5432/droidagent
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: droid-agent-redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: droid-agent-postgres
+    environment:
+      POSTGRES_USER: droidagent
+      POSTGRES_PASSWORD: droidagent
+      POSTGRES_DB: droidagent
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U droidagent"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  pg_data:
