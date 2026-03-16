@@ -1,0 +1,25 @@
+# Environment (contains API keys)
+droid-agent/.env
+
+# MCP config (contains service credentials — use mcp.example.json as template)
+droid-agent/config/mcp.json
+
+# Node modules
+node_modules/
+
+# Memory — user-generated content
+droid-agent/memory/infra/*
+droid-agent/memory/incidents/*
+droid-agent/memory/learned/*
+!droid-agent/memory/infra/.gitkeep
+!droid-agent/memory/incidents/.gitkeep
+!droid-agent/memory/learned/.gitkeep
+
+# Old devagent directory (if present)
+devagent/
+
+# Docker
+*.log
+
+# OS files
+.DS_Store
