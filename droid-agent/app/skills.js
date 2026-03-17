@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'fs/promises';
+import { readdir, readFile, writeFile, stat } from 'fs/promises';
 import { join } from 'path';
 
 const SKILLS_DIR = '/app/skills';
@@ -27,6 +27,12 @@ export async function loadSkills() {
     }
   }
   return skills;
+}
+
+export async function writeSkill(name, content) {
+  const fullPath = join(SKILLS_DIR, `${name}.md`);
+  await writeFile(fullPath, content, 'utf-8');
+  return { name, bytes: content.length };
 }
 
 export async function loadSkill(name) {

@@ -120,39 +120,35 @@ class McpServer extends EventEmitter {
   _send(msg) {
     if (!this.process?.stdin?.writable) return;
     const json = JSON.stringify(msg);
-    const header = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n`;
-    this.process.stdin.write(header + json);
+    this.process.stdin.write(json + '\n');
   }
 
   _onData(data) {
     this.buffer += data.toString();
 
     while (true) {
-      // Parse LSP-style framing: Content-Length: N\r\n\r\n{...}
+      // Try LSP-style framing first: Content-Length: N\r\n\r\n{...}
       const headerEnd = this.buffer.indexOf('\r\n\r\n');
-      if (headerEnd === -1) break;
-
-      const header = this.buffer.substring(0, headerEnd);
-      const match = header.match(/Content-Length:\s*(\d+)/i);
-      if (!match) {
-        // Try parsing as raw JSON lines (some servers skip framing)
-        const lineEnd = this.buffer.indexOf('\n');
-        if (lineEnd === -1) break;
-        const line = this.buffer.substring(0, lineEnd).trim();
-        this.buffer = this.buffer.substring(lineEnd + 1);
-        if (line) this._handleMessage(line);
-        continue;
+      if (headerEnd !== -1) {
+        const header = this.buffer.substring(0, headerEnd);
+        const match = header.match(/Content-Length:\s*(\d+)/i);
+        if (match) {
+          const contentLength = parseInt(match[1]);
+          const bodyStart = headerEnd + 4;
+          if (this.buffer.length < bodyStart + contentLength) break;
+          const body = this.buffer.substring(bodyStart, bodyStart + contentLength);
+          this.buffer = this.buffer.substring(bodyStart + contentLength);
+          this._handleMessage(body);
+          continue;
+        }
       }
 
-      const contentLength = parseInt(match[1]);
-      const bodyStart = headerEnd + 4;
-
-      if (this.buffer.length < bodyStart + contentLength) break;
-
-      const body = this.buffer.substring(bodyStart, bodyStart + contentLength);
-      this.buffer = this.buffer.substring(bodyStart + contentLength);
-
-      this._handleMessage(body);
+      // Raw JSON lines (newline-delimited)
+      const lineEnd = this.buffer.indexOf('\n');
+      if (lineEnd === -1) break;
+      const line = this.buffer.substring(0, lineEnd).trim();
+      this.buffer = this.buffer.substring(lineEnd + 1);
+      if (line) this._handleMessage(line);
     }
   }
 
@@ -304,6 +300,7 @@ class McpHttpServer {
 // ── Manager: spawns and manages all enabled MCP servers ──
 
 const servers = new Map();
+const allConfiguredServers = [];
 
 export async function initMcpServers() {
   let config;
@@ -321,31 +318,49 @@ export async function initMcpServers() {
     if (name === '_readme') continue;
     if (!serverConfig.enabled) continue;
 
+    const entry = {
+      name,
+      type: (serverConfig.type === 'http' && serverConfig.url) ? 'http' : 'stdio',
+      command: serverConfig.command || null,
+      url: serverConfig.url || null,
+      status: 'connecting',
+      error: null
+    };
+    allConfiguredServers.push(entry);
+
     if (serverConfig.type === 'http' && serverConfig.url) {
-      // HTTP/SSE MCP server
       const httpServer = new McpHttpServer(name, serverConfig);
       servers.set(name, httpServer);
       try {
         await httpServer.start();
+        entry.status = httpServer.ready ? 'connected' : 'failed';
+        if (!httpServer.ready) entry.error = 'Init failed';
       } catch (err) {
         console.error(`[mcp:${name}] HTTP init failed: ${err.message}`);
-        servers.delete(name);
+        entry.status = 'failed';
+        entry.error = err.message;
       }
     } else if (serverConfig.command) {
-      // stdio MCP server
       const server = new McpServer(name, serverConfig);
       servers.set(name, server);
       try {
         await server.start();
+        entry.status = server.ready ? 'connected' : 'failed';
+        if (!server.ready) entry.error = 'Init failed';
       } catch (err) {
         console.error(`[mcp:${name}] Failed to start: ${err.message}`);
-        servers.delete(name);
+        entry.status = 'failed';
+        entry.error = err.message;
       }
     }
   }
 
   const active = [...servers.values()].filter(s => s.ready);
   console.log(`[mcp] ${active.length} MCP server(s) active`);
+}
+
+export function getAllConfiguredServers() {
+  return allConfiguredServers;
 }
 
 export function getMcpTools() {
@@ -377,6 +392,24 @@ export async function callMcpTool(toolName, args) {
 
 export function getMcpServerCount() {
   return [...servers.values()].filter(s => s.ready).length;
+}
+
+export function getMcpServerDetails() {
+  const details = [];
+  for (const [name, server] of servers) {
+    details.push({
+      name,
+      ready: server.ready,
+      type: server.url ? 'http' : 'stdio',
+      toolCount: server.tools.length,
+      tools: server.tools.map(t => ({
+        name: t.name,
+        description: t.description || '',
+        inputSchema: t.inputSchema || null
+      }))
+    });
+  }
+  return details;
 }
 
 export function stopAllMcpServers() {

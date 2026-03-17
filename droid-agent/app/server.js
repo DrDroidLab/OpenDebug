@@ -6,11 +6,11 @@ import { dirname, join } from 'path';
 import { runAgent } from './agent.js';
 import { getProviderName, getModelId } from './provider.js';
 import { readAllMemory, writeMemory, getTotalMemoryBytes } from './memory.js';
-import { loadSkills } from './skills.js';
+import { loadSkills, writeSkill } from './skills.js';
 import { loadTools, loadMcpTools } from './tools.js';
 import { runSync } from './sync.js';
 import { initRedis, redisHealthy } from './redis.js';
-import { initMcpServers, getMcpServerCount } from './mcp-client.js';
+import { initMcpServers, getMcpServerCount, getMcpServerDetails, getAllConfiguredServers } from './mcp-client.js';
 import { startLearner } from './learner.js';
 import { initDb, dbHealthy, getIncidents, getToolExecutions, getRecentConversations, getConversationMessages, saveFeedback, getLastLearnerRun } from './db.js';
 
@@ -118,6 +118,20 @@ app.get('/api/skills', async (req, res) => {
   }
 });
 
+// PUT /api/skills/:name
+app.put('/api/skills/:name', async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (content === undefined) {
+      return res.status(400).json({ error: 'Content required' });
+    }
+    await writeSkill(req.params.name, content);
+    res.json({ success: true, name: req.params.name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/tools
 app.get('/api/tools', async (req, res) => {
   try {
@@ -126,6 +140,27 @@ app.get('/api/tools', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// GET /api/mcp-servers
+app.get('/api/mcp-servers', (req, res) => {
+  const configured = getAllConfiguredServers();
+  const active = getMcpServerDetails();
+
+  // Merge: show all configured servers with their tools
+  const result = configured.map(cfg => {
+    const detail = active.find(a => a.name === cfg.name);
+    return {
+      name: cfg.name,
+      type: cfg.type,
+      status: cfg.status,
+      error: cfg.error,
+      toolCount: detail ? detail.toolCount : 0,
+      tools: detail ? detail.tools : []
+    };
+  });
+
+  res.json({ servers: result });
 });
 
 // POST /api/sync — SSE streaming

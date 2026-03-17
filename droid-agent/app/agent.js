@@ -108,6 +108,14 @@ PROACTIVE MEMORY UPDATES — you should automatically save to memory when you di
 - A recurring issue or known workaround → save to memory/learned/
 - A correction to something already in memory (outdated info, wrong port, renamed service) → update the existing file
 
+TOOL OUTPUT MEMORY — after running a tool, evaluate if the output contains information worth saving for future reference:
+- Service/pod listings, deployment configs, resource inventories → save to memory/infra/
+- Error patterns, stack traces with identified root causes → save to memory/incidents/
+- Network topology, port mappings, DNS entries → save to memory/infra/network.md
+- Configuration details (env vars, secrets names, config maps) → save to memory/infra/
+- Do NOT save transient data (current CPU %, live log tails) unless they reveal a pattern
+- When saving tool output, summarize it — don't dump raw output verbatim
+
 When you save something proactively, tell the user at the end of your response what you saved and where, e.g.:
 "I also updated memory/context.md with the fact that your payments service runs on port 3001."
 
