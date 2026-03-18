@@ -12,6 +12,7 @@ import { runSync } from './sync.js';
 import { initRedis, redisHealthy } from './redis.js';
 import { initMcpServers, getMcpServerCount, getMcpServerDetails, getAllConfiguredServers } from './mcp-client.js';
 import { startLearner } from './learner.js';
+import { regenerateAgentMd } from './agent-md.js';
 import { initDb, dbHealthy, getIncidents, getToolExecutions, getRecentConversations, getConversationMessages, saveFeedback, getLastLearnerRun } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +28,7 @@ initRedis();
 initDb();
 initMcpServers().catch(err => console.error('MCP init error:', err.message));
 startLearner();
+regenerateAgentMd().catch(err => console.error('[agent-md] Initial generation failed:', err.message));
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -92,6 +94,7 @@ app.post('/api/memory/write', async (req, res) => {
       return res.status(400).json({ error: 'Path and content required' });
     }
     await writeMemory(path, content);
+    regenerateAgentMd().catch(err => console.error('[agent-md]', err.message));
     res.json({ success: true, path });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -126,6 +129,7 @@ app.put('/api/skills/:name', async (req, res) => {
       return res.status(400).json({ error: 'Content required' });
     }
     await writeSkill(req.params.name, content);
+    regenerateAgentMd().catch(err => console.error('[agent-md]', err.message));
     res.json({ success: true, name: req.params.name });
   } catch (err) {
     res.status(500).json({ error: err.message });

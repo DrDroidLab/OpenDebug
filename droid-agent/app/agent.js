@@ -1,9 +1,21 @@
+import { readFile } from 'fs/promises';
 import { loadSkills, loadSkill } from './skills.js';
 import { readAllMemory, readMemory, writeMemory } from './memory.js';
 import { loadTools, loadMcpTools, executeTool } from './tools.js';
 import { getConversation, saveConversation } from './redis.js';
 import { logToolExecution, logIncident, upsertConversation, saveMessage, getRecentFeedback } from './db.js';
 import { createCompletion, buildImageContent, getProviderName, getModelId } from './provider.js';
+import { regenerateAgentMd } from './agent-md.js';
+
+const AGENT_MD_PATH = '/app/AGENT.md';
+
+async function loadAgentMd() {
+  try {
+    return await readFile(AGENT_MD_PATH, 'utf-8');
+  } catch {
+    return null;
+  }
+}
 
 const MAX_TOOL_ITERATIONS = 10;
 const MAX_SYNC_ITERATIONS = 40;
@@ -25,6 +37,15 @@ function log(emitter, type, data) {
 }
 
 async function buildSystemPrompt(emitter) {
+  // Load AGENT.md first — the master knowledge index
+  log(emitter, 'thinking', 'Loading AGENT.md knowledge index...');
+  const agentMd = await loadAgentMd();
+  if (agentMd) {
+    log(emitter, 'thinking', `AGENT.md loaded (${agentMd.length} chars)`);
+  } else {
+    log(emitter, 'thinking', 'AGENT.md not found — will operate without knowledge index');
+  }
+
   log(emitter, 'thinking', 'Loading skills...');
   const skills = await loadSkills();
   log(emitter, 'thinking', `Loaded ${skills.length} skills: ${skills.map(s => s.name).join(', ')}`);
@@ -46,6 +67,24 @@ CRITICAL RULES:
 - Always act, never just advise.
 
 `;
+
+  // AGENT.md is the first thing the agent sees — the master knowledge index
+  if (agentMd) {
+    prompt += `<agent_knowledge_index>
+The following is your master knowledge index (AGENT.md). READ THIS FIRST before every request. It tells you exactly what skills, memory, infrastructure data, incident history, and learned patterns are available and where to find them. Use this to plan your approach before taking action.
+
+${agentMd}
+</agent_knowledge_index>
+
+IMPORTANT: Before responding to any user request, consult the knowledge index above to:
+1. Identify which skills are relevant to the issue
+2. Check if similar incidents have been investigated before
+3. Look up known infrastructure topology and configurations
+4. Review learned patterns for proven investigation sequences
+Then form an action plan and execute it.
+
+`;}
+
 
   if (skills.length > 0) {
     prompt += '<skills>\n';
@@ -297,6 +336,16 @@ export async function runAgent({ message, images, conversationId, emitter }) {
         }
       }
 
+      // Regenerate AGENT.md if any memory was written
+      if (memoryWrites.length > 0) {
+        try {
+          await regenerateAgentMd();
+          log(emitter, 'thinking', 'AGENT.md updated with new knowledge');
+        } catch (err) {
+          console.error('[agent-md] Regeneration failed:', err.message);
+        }
+      }
+
       let finalResponse = stripToolCalls(assistantText);
       finalResponse = stripMemoryWrites(finalResponse);
 
@@ -493,6 +542,16 @@ ${getToolInstructions()}`;
     log(emitter, 'thinking', `Fed ${results.length} tool result(s) back to model, looping...`);
   }
 
+  // Regenerate AGENT.md after sync
+  if (filesWritten.length > 0) {
+    try {
+      await regenerateAgentMd();
+      log(emitter, 'thinking', 'AGENT.md updated after sync');
+    } catch (err) {
+      console.error('[agent-md] Regeneration failed:', err.message);
+    }
+  }
+
   log(emitter, 'done', { message: `Sync complete: ${iterations} iterations, ${filesWritten.length} files written`, filesWritten });
   return { filesWritten };
 }
@@ -502,3 +561,6 @@ function extractField(content, fieldName) {
   const match = content.match(regex);
   return match ? match[1].trim() : null;
 }
+
+// Exported for testing
+export { parseToolCalls, parseMemoryWrites, stripToolCalls, stripMemoryWrites, extractField, tryParseJson, isValidJson };

@@ -8,6 +8,7 @@ services:
       - ./skills:/app/skills
       - ./memory:/app/memory
       - ./config:/app/config
+      - ./AGENT.md:/app/AGENT.md
       # Host Docker socket — lets docker commands work
       - /var/run/docker.sock:/var/run/docker.sock
       # Host credential & config mounts (read-only)
