@@ -2,6 +2,7 @@ import { getUnanalyzedConversations, saveLearnerRun, getLastLearnerRun } from '.
 import { readMemory, writeMemory } from './memory.js';
 import { loadSkills } from './skills.js';
 import { createCompletion } from './provider.js';
+import { regenerateAgentMd } from './agent-md.js';
 
 const LEARNER_ENABLED = (process.env.LEARNER_ENABLED || 'true').toLowerCase() === 'true';
 const LEARNER_INTERVAL_MS = parseInt(process.env.LEARNER_INTERVAL_MS) || 3600000; // 1 hour
@@ -126,6 +127,16 @@ Your job is to produce FOUR sections separated by ===SPLIT===:
       conversationsAnalyzed: conversations.length,
       filesWritten
     });
+
+    // Regenerate AGENT.md after learner writes
+    if (filesWritten.length > 0) {
+      try {
+        await regenerateAgentMd();
+        console.log('[learner] AGENT.md updated');
+      } catch (err) {
+        console.error('[agent-md] Regeneration failed:', err.message);
+      }
+    }
 
     console.log(`[learner] Cycle complete: analyzed ${conversations.length} conversations, wrote ${filesWritten.length} files`);
     return { conversationsAnalyzed: conversations.length, filesWritten };

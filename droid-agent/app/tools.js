@@ -116,6 +116,9 @@ async function executeMemoryWrite(path, content) {
   }
 }
 
+// Exported for testing
+export { DANGEROUS_PATTERNS, truncate };
+
 export async function executeTool(toolName, args) {
   try {
     // Check built-in tools first
